@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import math
+import time
 
 
 def main():
@@ -9,10 +10,9 @@ def main():
     # p, t, y, u = sample.shape
     image = cv2.imread('source_image.jpg')
     image_height, image_width, S = image.shape
-    m = 10
-    n = 10
+    m = 20
+    n = 20
 
-    np.random.seed(1)
     transformed_pixels = 2 * image[:, :] / np.max(image) - 1
     pixels = block_shaped(transformed_pixels, m, n)
     pixel_blocks = np.split(pixels, pixels.shape[0], axis=0)
@@ -20,17 +20,23 @@ def main():
     pixel_blocks_X = []
     for pb in pixel_blocks:
         pixel_blocks_X.append(pb.reshape(-1))
+
     N = m * n * S
     p = 20
-    e = 0.005 * m * n
+    e = 0.005 * m * n * p
     e_ = e / p
     E = math.inf
     E_ = math.inf
     W = np.random.uniform(-1, 1, N * p).reshape(N, p)
     W_ = W.transpose()
+    Wn = W
+    W_n = W_
+    dXs = np.empty((len(pixel_blocks_X), W.shape[0]))
     Eq = np.empty(len(pixel_blocks_X))
     Eq_ = np.empty(len(pixel_blocks_X))
     t = 0
+    # alpha = 0.000001 * m * n * p
+    # alpha_ = 0.001
 
     while E > e or E_ > e_:
         t += 1
@@ -46,21 +52,24 @@ def main():
             W_ = W_ - alpha_ * Y[:, np.newaxis] @ (X_ - X)[np.newaxis, :]
 
             len_W = np.apply_along_axis(lambda col: math.sqrt(np.sum(col * col)), axis=1, arr=W)
-            len_W_ = np.apply_along_axis(lambda col: math.sqrt(np.sum(col * col)), axis=1, arr=W_)
+            len_W_ = np.apply_along_axis(lambda col: math.sqrt(np.sum(col * col)), axis=0, arr=W_)
 
             W = W / len_W[:, np.newaxis]
-            W_ = W_ / len_W_[:, np.newaxis]
+            W_ = W_ / len_W_
 
             dX = X_ - X
             Eq[i] = np.sum(dX * dX, axis=0) / 2
 
             dY = Y_ - Y
             Eq_[i] = np.sum(dY * dY, axis=0) / 2
+            # print("Error: {}. Error': {}".format(Eq[i], Eq_[i]))
+            # time.sleep(0.5)
+            # print("Error: {}. Error': {}".format(E, E_))
+            # print(Eq[i])
+            # print(i)
         E = np.sum(Eq, axis=0) / len(pixel_blocks_X)
         E_ = np.sum(Eq_, axis=0) / len(pixel_blocks_X)
         print("Error: {}. Error': {}".format(E, E_))
-    np.save('model1', W)
-    np.save('model_1', W)
 
 
 def block_shaped(arr, m, n):
