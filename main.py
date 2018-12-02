@@ -5,17 +5,47 @@ from pathlib import Path
 
 
 def main():
+    # Different p
+    # np.random.seed(1)
+    # image_name = Path('images') / '1lina32x32.jpg'
+    # P = [50, 60, 70]
+    # e = 5
+    # m = 5
+    # n = 5
+    # N = m * n * 3
+    #
+    # h, w, s, block_shape, source_shape, pixels = prepare_image(image_name, m, n)
+    # for p in P:
+    #     E, t, Z, L, W, W_ = train(pixels, N, p, e, image_name)
+    #     restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, e, p)
+    #     print('=====================')
+
+    # Different images
+    # image_names = sorted(Path('images').glob('*.jpg'))
+    # p = 50
+    # e = 15
+    # m = 5
+    # n = 5
+    # N = m * n * 3
+    #
+    # for image_name in image_names:
+    #     h, w, s, block_shape, source_shape, pixels = prepare_image(image_name, m, n)
+    #     E, t, Z, L, W, W_ = train(pixels, N, p, e, image_name)
+    #     restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, e, p)
+    #     print('=====================')
+
+    # Different e
     image_name = Path('images') / '1lina32x32.jpg'
-    P = [30, 40, 50]
-    e = 5
+    p = 50
+    e = [20, 15, 10]
     m = 5
     n = 5
     N = m * n * 3
 
     h, w, s, block_shape, source_shape, pixels = prepare_image(image_name, m, n)
-    for p in P:
-        E, t, Z, L, W, W_ = train(pixels, N, p, e, image_name)
-        restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, E, p)
+    for _e in e:
+        E, t, Z, L, W, W_ = train(pixels, N, p, _e, image_name)
+        restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, _e, p)
         print('=====================')
 
 
@@ -61,9 +91,9 @@ def train(pixels, N, p, e, image_name):
 
             dY = Y_ - Y
             Eq_[i] = np.sum(dY * dY, axis=0) / 2
-
         E = np.sum(Eq, axis=0)
         E_ = np.sum(Eq_, axis=0)
+        # print("E:{}, E':{}".format(E, E_))
 
     print('Image={}'.format(image_name))
     print('Iterations={}'.format(t))
@@ -72,27 +102,27 @@ def train(pixels, N, p, e, image_name):
     print('Z={}'.format(Z))
     model_folder = Path('models')
     readable_model_folder = model_folder / 'readable'
-    name_model = 'IMAGE{}_N{}_L{}_E{}_P{}model'.format(image_name, N, L, E, p)
-    name_model_ = 'IMAGE{}_N{}_L{}_E{}_P{}model_'.format(image_name, N, L, E, p)
+    name_model = 'IMAGE{}_N{}_L{}_E{}_P{}model'.format(image_name.name, N, L, e, p)
+    name_model_ = 'IMAGE{}_N{}_L{}_E{}_P{}model_'.format(image_name.name, N, L, e, p)
     np.save(model_folder / name_model, W)
     np.save(model_folder / name_model_, W)
     with open(readable_model_folder / name_model, 'wt') as f:
         print('W', file=f)
-        print([col for col in W], file=f)
-    with open(readable_model_folder / name_model, 'wt') as f:
+        print([str(col).replace('\n', ' ') for col in W], file=f)
+    with open(readable_model_folder / name_model_, 'wt') as f:
         print("W'", file=f)
-        print([col for col in W_], file=f)
+        print([str(col).replace('\n', ' ') for col in W_], file=f)
     return E, t, Z, L, W, W_
 
 
-def restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, E, p):
+def restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, e, p):
     mm_W_W_ = W_.T @ W.T
     Y = np.array([mm_W_W_ @ X for X in pixels])
     restored_pixels = Y.reshape(pixels.shape[0], block_shape[0], block_shape[1], block_shape[2])
     restored_merged_pixels = block_unshaped(restored_pixels, source_shape, h, w, m, n)
     restored_merged_pixels = 255 * (restored_merged_pixels + 1) / 2
     restored_merged_pixels = np.rint(restored_merged_pixels)
-    cv2.imwrite('restored_images/IMAGE{}_N{}_L{}_E{}_P{}restored.jpg'.format(image_name, N, L, E, p), restored_merged_pixels)
+    cv2.imwrite('restored_images/IMAGE{}_N{}_L{}_E{}_P{}restored.jpg'.format(image_name.name, N, L, e, p), restored_merged_pixels)
 
 
 def block_shaped(arr, m, n):
