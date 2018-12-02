@@ -142,7 +142,7 @@ def block_shaped(arr, m, n):
 
 
 def block_unshaped(arr, source_shape, h, w, m, n):
-    arr = arr.reshape(source_shape[0] // m, source_shape[1] // m, m, n, 3).swapaxes(1, 2).reshape(source_shape)
+    arr = arr.reshape(source_shape[0] // m, source_shape[1] // m, m, n, source_shape[2]).swapaxes(1, 2).reshape(source_shape)
 
     pivot_c = w - w % n
     start_c = w - n
