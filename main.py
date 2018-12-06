@@ -2,51 +2,71 @@ import cv2
 import numpy as np
 import math
 from pathlib import Path
+import json
 
 
 def main():
-    # Different p
-    # np.random.seed(1)
-    # image_name = Path('images') / '1lina32x32.jpg'
-    # P = [50, 60, 70]
-    # e = 5
-    # m = 5
-    # n = 5
-    # N = m * n * 3
-    #
-    # h, w, s, block_shape, source_shape, pixels = prepare_image(image_name, m, n)
-    # for p in P:
-    #     E, t, Z, L, W, W_ = train(pixels, N, p, e, image_name)
-    #     restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, e, p)
-    #     print('=====================')
+    np.random.seed(1)
 
-    # Different images
-    # image_names = sorted(Path('images').glob('*.jpg'))
-    # p = 50
-    # e = 15
-    # m = 5
-    # n = 5
-    # N = m * n * 3
-    #
-    # for image_name in image_names:
-    #     h, w, s, block_shape, source_shape, pixels = prepare_image(image_name, m, n)
-    #     E, t, Z, L, W, W_ = train(pixels, N, p, e, image_name)
-    #     restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, e, p)
-    #     print('=====================')
+    plot_data = {}
+    t_on_p = {'p': [], 't': []}
+    t_on_im = {'im': [], 't': []}
+    t_on_e = {'e': [], 't': []}
+    plot_data['t_on_p'] = t_on_p
+    plot_data['t_on_im'] = t_on_im
+    plot_data['t_on_e'] = t_on_e
 
-    # Different e
-    image_name = Path('images') / '1lina32x32.jpg'
-    p = 50
-    e = [20, 15, 10]
-    m = 5
-    n = 5
-    N = m * n * 3
+    with open('report_info.txt', 'w') as f:
+        print('Different p', file=f)
+        image_name = Path('images') / '1lina32x32.jpg'
+        P = [50, 60, 70]
+        e = 5
+        m = 5
+        n = 5
+        N = m * n * 3
 
-    h, w, s, block_shape, source_shape, pixels = prepare_image(image_name, m, n)
-    for _e in e:
-        E, t, Z, L, W, W_ = train(pixels, N, p, _e, image_name)
-        restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, _e, p)
-        print('=====================')
+        h, w, s, block_shape, source_shape, pixels = prepare_image(image_name, m, n)
+        for p in P:
+            E, t, Z, L, W, W_ = train(pixels, N, p, e, image_name, f)
+            t_on_p['p'].append(p)
+            t_on_p['t'].append(t)
+            restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, e, p)
+            print('=====================', file=f)
+
+        print('\n\nDifferent images', file=f)
+        image_names = sorted(Path('images').glob('*.jpg'))
+        p = 50
+        e = 15
+        m = 5
+        n = 5
+        N = m * n * 3
+
+        for image_name in image_names:
+            h, w, s, block_shape, source_shape, pixels = prepare_image(image_name, m, n)
+            E, t, Z, L, W, W_ = train(pixels, N, p, e, image_name, f)
+            t_on_im['im'].append(image_name.name)
+            t_on_im['t'].append(t)
+            restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, e, p)
+            print('=====================', file=f)
+
+        print('\n\nDifferent e', file=f)
+        image_name = Path('images') / '1lina32x32.jpg'
+        p = 50
+        e = [10, 15, 20]
+        m = 5
+        n = 5
+        N = m * n * 3
+
+        h, w, s, block_shape, source_shape, pixels = prepare_image(image_name, m, n)
+        for _e in e:
+            E, t, Z, L, W, W_ = train(pixels, N, p, _e, image_name, f)
+            t_on_e['e'].append(_e)
+            t_on_e['t'].append(t)
+            restore_image(W, W_, pixels, block_shape, source_shape, h, w, m, n, image_name, N, L, _e, p)
+            print('=====================', file=f)
+
+    with open('plots.json', 'w') as f:
+        json.dump(plot_data, f)
 
 
 def prepare_image(image_name, m, n):
@@ -60,17 +80,14 @@ def prepare_image(image_name, m, n):
     return h, w, s, block_shape, source_shape, pixels
 
 
-def train(pixels, N, p, e, image_name):
+def train(pixels, N, p, e, image_name, file):
     W = np.random.uniform(-1, 1, N * p).reshape(N, p)
     W_ = W.copy().transpose()
     E = math.inf
-    E_ = math.inf
     L = len(pixels)
-    Eq = np.empty(L)
-    Eq_ = np.empty(L)
     t = 0
 
-    while E > e or E_ > e:
+    while E > e:
         t += 1
         for i, X in enumerate(pixels):
             Y = W.T @ X
@@ -86,20 +103,18 @@ def train(pixels, N, p, e, image_name):
             W = W / np.apply_along_axis(lambda col: math.sqrt(np.sum(col * col)), axis=0, arr=W)
             W_ = W_ / np.apply_along_axis(lambda col: math.sqrt(np.sum(col * col)), axis=0, arr=W_)
 
-            dX = X_ - X
-            Eq[i] = np.sum(dX * dX, axis=0) / 2
+        E = np.sum(np.apply_along_axis(lambda row: np.sum((W_.T @ W.T @ row - row) ** 2) / 2, axis=1, arr=pixels))
+        # print("E:{}, avgE:{}".format(E, E / L))
 
-            dY = Y_ - Y
-            Eq_[i] = np.sum(dY * dY, axis=0) / 2
-        E = np.sum(Eq, axis=0)
-        E_ = np.sum(Eq_, axis=0)
-        # print("E:{}, E':{}".format(E, E_))
-
-    print('Image={}'.format(image_name))
-    print('Iterations={}'.format(t))
-    print('E={}'.format(E))
     Z = (N * L) / ((N + L) * p + 2)
-    print('Z={}'.format(Z))
+    print('Image={}'.format(image_name), file=file)
+    print('Iterations={}'.format(t), file=file)
+    print('Edest={}'.format(e), file=file)
+    print('E={}'.format(E), file=file)
+    print('P={}'.format(p), file=file)
+    print('L={}'.format(L), file=file)
+    print('N={}'.format(N), file=file)
+    print('Z={}'.format(Z), file=file)
     model_folder = Path('models')
     readable_model_folder = model_folder / 'readable'
     name_model = 'IMAGE{}_N{}_L{}_E{}_P{}model'.format(image_name.name, N, L, e, p)
@@ -108,10 +123,12 @@ def train(pixels, N, p, e, image_name):
     np.save(model_folder / name_model_, W)
     with open(readable_model_folder / name_model, 'wt') as f:
         print('W', file=f)
-        print([str(col).replace('\n', ' ') for col in W], file=f)
+        for row in W:
+            print(str(row).replace('\n', ' '), file=f)
     with open(readable_model_folder / name_model_, 'wt') as f:
         print("W'", file=f)
-        print([str(col).replace('\n', ' ') for col in W_], file=f)
+        for row in W_:
+            print(str(row).replace('\n', ' '), file=f)
     return E, t, Z, L, W, W_
 
 

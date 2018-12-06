@@ -6,9 +6,9 @@ def main():
     with open('plots.json') as f:
         plot_data = json.load(f)
 
-    t_on_p = plot_data['tOnP']
-    t_on_im = plot_data['tOnIm']
-    t_on_e = plot_data['tOnE']
+    t_on_p = plot_data['t_on_p']
+    t_on_im = plot_data['t_on_im']
+    t_on_e = plot_data['t_on_e']
 
     plt.xlabel('P')
     plt.ylabel('Iterations')
